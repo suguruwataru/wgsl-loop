@@ -13,9 +13,6 @@ mod test {
         (0..2)
             .map(|id| {
                 let t = move || loop {
-                    if id == 0 {
-                        std::thread::sleep(std::time::Duration::from_millis(100))
-                    }
                     if LOCK.fetch_or(1, Ordering::Relaxed) == 1 {
                         continue;
                     }
@@ -37,9 +34,6 @@ mod test {
         (0..2)
             .map(|id| {
                 let t = move || loop {
-                    if id == 0 {
-                        std::thread::sleep(std::time::Duration::from_millis(100))
-                    }
                     while LOCK.fetch_or(1, Ordering::Relaxed) == 1 {}
                     unsafe { CTR += 1 }
                     LOCK.fetch_and(0, Ordering::Relaxed);
@@ -56,15 +50,15 @@ mod test {
     #[ignore = "this makes your computer hang"]
     #[test]
     fn wgsl_while() {
-        run_shader("while_atomic");
+        test_shader("while_atomic");
     }
 
     #[test]
     fn wgsl_loop() {
-        run_shader("loop_atomic");
+        test_shader("loop_atomic");
     }
 
-    fn run_shader(entry_point: &str) {
+    fn test_shader(entry_point: &str) {
         let wgpu_instance = wgpu::Instance::default();
         let adapter = wgpu_instance
             .request_adapter(&wgpu::RequestAdapterOptions::default())
