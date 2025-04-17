@@ -118,10 +118,7 @@ mod test {
             .block_on()
             .unwrap();
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor {
-                required_features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
-                ..Default::default()
-            })
+            .request_device(&wgpu::DeviceDescriptor::default())
             .block_on()
             .unwrap();
         device.on_uncaptured_error(Box::new(|error| {
