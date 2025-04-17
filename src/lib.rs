@@ -1,14 +1,14 @@
 #[cfg(test)]
 mod test {
     // ONLY TO BE RUN WITH `cargo test -- --test-threads=1`
-    use std::sync::atomic::{AtomicU32, Ordering};
     use pollster::FutureExt;
+    use std::sync::atomic::{AtomicU32, Ordering};
 
     static LOCK: AtomicU32 = AtomicU32::new(0);
     static mut CTR: u32 = 0;
 
     #[test]
-    fn loop_atomic() {
+    fn loop_continue() {
         unsafe { CTR = 0 }
         (0..2)
             .map(|_| {
@@ -29,7 +29,29 @@ mod test {
     }
 
     #[test]
-    fn while_atomic() {
+    fn loop_break() {
+        unsafe { CTR = 0 }
+        (0..2)
+            .map(|_| {
+                let t = move || {
+                    loop {
+                        if LOCK.fetch_or(1, Ordering::Relaxed) == 0 {
+                            break;
+                        }
+                    }
+                    unsafe { CTR += 1 }
+                    LOCK.fetch_and(0, Ordering::Relaxed);
+                };
+                std::thread::spawn(t)
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .for_each(|h| h.join().unwrap());
+        assert_eq!(unsafe { CTR }, 2);
+    }
+
+    #[test]
+    fn while_other_has_lock() {
         unsafe { CTR = 0 }
         (0..2)
             .map(|_| {
@@ -47,15 +69,46 @@ mod test {
         assert_eq!(unsafe { CTR }, 2);
     }
 
+    #[test]
+    fn while_self_has_not_lock() {
+        unsafe { CTR = 0 }
+        (0..2)
+            .map(|_| {
+                let t = move || loop {
+                    while LOCK.fetch_or(1, Ordering::Relaxed) != 0 {}
+                    unsafe { CTR += 1 }
+                    LOCK.fetch_and(0, Ordering::Relaxed);
+                    break;
+                };
+                std::thread::spawn(t)
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .for_each(|h| h.join().unwrap());
+        assert_eq!(unsafe { CTR }, 2);
+    }
+
     #[ignore = "this makes your computer hang"]
     #[test]
-    fn wgsl_while() {
-        test_shader("while_atomic");
+    fn wgsl_while_other_has_lock() {
+        test_shader("while_other_has_lock");
+    }
+
+    #[ignore = "this makes your computer hang"]
+    #[test]
+    fn wgsl_while_self_has_not_lock() {
+        test_shader("while_self_has_not_lock");
+    }
+
+    #[ignore = "this makes your computer hang"]
+    #[test]
+    fn wgsl_loop_break() {
+        test_shader("loop_break");
     }
 
     #[test]
-    fn wgsl_loop() {
-        test_shader("loop_atomic");
+    fn wgsl_loop_continue() {
+        test_shader("loop_continue");
     }
 
     fn test_shader(entry_point: &str) {
