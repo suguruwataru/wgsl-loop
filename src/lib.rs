@@ -11,7 +11,7 @@ mod test {
     fn loop_atomic() {
         unsafe { CTR = 0 }
         (0..2)
-            .map(|id| {
+            .map(|_| {
                 let t = move || loop {
                     if LOCK.fetch_or(1, Ordering::Relaxed) == 1 {
                         continue;
@@ -32,7 +32,7 @@ mod test {
     fn while_atomic() {
         unsafe { CTR = 0 }
         (0..2)
-            .map(|id| {
+            .map(|_| {
                 let t = move || loop {
                     while LOCK.fetch_or(1, Ordering::Relaxed) == 1 {}
                     unsafe { CTR += 1 }
